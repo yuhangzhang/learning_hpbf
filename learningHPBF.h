@@ -33,6 +33,8 @@ public:
 	poly<int> * getPosiID();
 	int fillPosiID(int maxorder);
 
+	void posi2poly(vector<int> posi,poly<double>& index, double coeff);
+	bool ifZero(const vector<int>& posi,const vector<bool>& y);
 private:
 	vector<double> _para;
 	component* _component;
@@ -41,6 +43,7 @@ private:
 	poly<int> _TermID;
 	poly<int> _PosiID;
 
+	
 	int fill(int start, int end, vector<int>& index, int& counter);
 	int dualfill(int start, int end, vector<int>& index, int& counter, int maxorder);
 };
