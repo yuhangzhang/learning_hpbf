@@ -112,7 +112,7 @@ int learningHPBF::dualfill(int start, int end, vector<int>& index, int& counter,
 
 
 
-double learningHPBF::learn(const vector<bool>& y,vector<double> &w, const vector<double>& lambda, const vector<double> & slacks, int maxorder)
+double learningHPBF::learn(const vector<bool>& y,vector<double> &w, const double& lambda, vector<double> & slacks, int maxorder)
 {
 	_TermID.destroy();
 	_PosiID.destroy();
@@ -153,7 +153,7 @@ double learningHPBF::learn(const vector<bool>& y,vector<double> &w, const vector
 		{
 			index[0] = _TermID.getTerm(it2->first);
 			index[2] = -it2->second;
-			tripletList.push_back(index);//remember we count from 1
+			tripletList.push_back(index);
 		}
 
 		cols.destroy();
@@ -165,6 +165,106 @@ double learningHPBF::learn(const vector<bool>& y,vector<double> &w, const vector
 			tripletList.push_back(index);
 		}
 	}
+
+	for(int i=1;i<=_lastvar;i++)
+	{
+		vector<double> index(3);
+		vector<int> index2(1,i);
+		index[0] = _TermID.getTerm(index2);
+		index[1] = lastComp()+_PosiID.numTerm()+i;
+		index[2] = y[i-1]*-2+1;
+		tripletList.push_back(index);
+	}
+
+
+	printf("passing to matlab\n");
+
+	Engine *eg = engOpen(NULL);
+	engEvalString(eg,"clear all");
+	engEvalString(eg,"cd C:\\projects\\cvx;");
+	engEvalString(eg,"cvx_setup;");		
+
+
+
+	mxArray *scalar = mxCreateDoubleMatrix(1,1,mxREAL);
+
+	*((double *) mxGetPr(scalar))=tripletList.size();
+	engPutVariable(eg,"nzentry",scalar);
+	*((double *) mxGetPr(scalar))=_TermID.numTerm();
+	engPutVariable(eg,"numpoly",scalar);
+	*((double *) mxGetPr(scalar))=_PosiID.numTerm();
+	engPutVariable(eg,"numposi",scalar);
+	*((double *) mxGetPr(scalar))=_para.size();
+	engPutVariable(eg,"numcom",scalar);
+	*((double *) mxGetPr(scalar))=_lastvar;
+	engPutVariable(eg,"numvar",scalar);
+	*((double *) mxGetPr(scalar))=lambda;
+	engPutVariable(eg,"lambda",scalar);
+	
+
+	mxArray *index_i = mxCreateDoubleMatrix(tripletList.size(),1,mxREAL);
+	mxArray *index_j = mxCreateDoubleMatrix(tripletList.size(),1,mxREAL);
+	mxArray *value_s = mxCreateDoubleMatrix(tripletList.size(),1,mxREAL);
+
+	for(unsigned int i=0;i<tripletList.size();i++)
+	{
+		mxGetPr(index_i)[i] = tripletList[i][0];
+		mxGetPr(index_j)[i] = tripletList[i][1];
+		mxGetPr(value_s)[i] = tripletList[i][2];
+		tripletList[i].clear();
+	}
+
+	tripletList.clear();
+
+	engPutVariable(eg,"index_i",index_i);
+	engPutVariable(eg,"index_j",index_j);
+	engPutVariable(eg,"value_s",value_s);
+
+	mxDestroyArray(index_i);
+	mxDestroyArray(index_j);
+	mxDestroyArray(value_s);
+
+	engEvalString(eg,"A = sparse(index_i,index_j,value_s,numpoly+1,numcom+numposi+numvar,nzentry);");
+printf("cvx\n");//getchar();
+
+	engEvalString(eg,"cvx_begin");
+
+	engEvalString(eg,"variable d(numvar);");
+	engEvalString(eg,"variable w(numcom);");
+	engEvalString(eg,"variable p(numposi);");
+
+
+
+	engEvalString(eg,"minimize(norm(w,1)+sum(d));");
+	engEvalString(eg,"subject to");
+	engEvalString(eg,"A*[w;p;d]==zeros(numpoly+1,1);");
+	engEvalString(eg,"w(1)==1;");
+	engEvalString(eg,"d>=zeros(numvar,1);");
+	engEvalString(eg,"p>=zeros(numposi,1);");
+	engEvalString(eg,"cvx_end");
+
+printf("cvx end\n");
+
+
+	mxArray *slacksmx = engGetVariable(eg,"d");
+	mxArray *weightsmx = engGetVariable(eg,"w");
+	mxArray *optvalmx = engGetVariable(eg,"cvx_optval");
+	for(int i=0;i<_para.size();i++)
+	{
+		_para[i] = mxGetPr(weightsmx)[i];
+	}
+
+	for(int i=0;i<_lastvar;i++)
+	{
+		//printf("i=%d\n",i);
+		slacks[i] = mxGetPr(slacksmx)[i];
+	}
+
+	
+	double optval = mxGetPr(optvalmx)[0];
+
+	return optval;
+
 
 
 	return 0;

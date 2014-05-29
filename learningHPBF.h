@@ -19,7 +19,7 @@ public:
 
 	//void remove_cQPBF(int cid);//remove component-cid
 	
-	double learn(const vector<bool>& y,vector<double> &w, const vector<double>& lambda, const vector<double> & slacks, int maxorder);
+	double learn(const vector<bool>& y,vector<double> &w, const double& lambda, vector<double> & slacks, int maxorder);
 	
 	int lastVar();
 	int lastComp();
