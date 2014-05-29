@@ -64,13 +64,21 @@ int learningHPBF::fillTermID()
 int learningHPBF::fill(int start, int end, vector<int>& index, int& counter)
 {
 	int size = int(index.size());
-		
+	
+	//printf("s=%d e=%d\n",start,end);
+
 	for(int i=start;i<=end;i++)
 	{
+		//printf("i=%d | %d / %d\n",i,start,end);
 		index.resize(size+1);
 		index[size] = i;
 		_TermID.addTerm(index,counter++);
-		fill(i+1,_lastvar,index,counter);
+//for(int ii=0;ii<index.size();ii++)
+//{
+//	printf("%d ",index[ii]);
+//}
+//printf("\n");
+		fill(i+1,end,index,counter);
 	}
 
 
@@ -99,12 +107,12 @@ int learningHPBF::dualfill(int start, int end, vector<int>& index, int& counter,
 			index.resize(size+1);
 			index[size] = i;
 			_PosiID.addTerm(index,counter++);
-			dualfill(i+1,_lastvar,index,counter,maxorder);
+			dualfill(i+1,end,index,counter,maxorder);
 
 			index.resize(size+1);
 			index[size] = -i;
 			_PosiID.addTerm(index,counter++);
-			dualfill(i+1,_lastvar,index,counter,maxorder);
+			dualfill(i+1,end,index,counter,maxorder);
 		}
 	}
 	return counter;
@@ -132,7 +140,18 @@ double learningHPBF::learn(const vector<bool>& y,vector<double> &w, const double
 		{
 			vector<double> index(3);
 				
-			index[0] = _TermID.getTerm(it->first);//row
+			index[0] = _TermID.getTerm(it->first);//row 
+			if(index[0]==0) 
+			{
+				printf("%d wrong\n",k->cid);
+				vector<int> tindex = it->first;
+				for(int i=0;i<tindex.size();i++)
+				{
+					printf("%d ",tindex[i]);
+				}
+				printf("\n");
+				getchar();
+			}
 			index[1] = k->cid;//column
 			index[2] = it->second;
 
@@ -169,10 +188,11 @@ double learningHPBF::learn(const vector<bool>& y,vector<double> &w, const double
 	for(int i=1;i<=_lastvar;i++)
 	{
 		vector<double> index(3);
-		vector<int> index2(1,i);
+		vector<int> index2(1);
+		index2[0]=i;
 		index[0] = _TermID.getTerm(index2);
 		index[1] = lastComp()+_PosiID.numTerm()+i;
-		index[2] = y[i-1]*-2+1;
+		index[2] = y[i-1]*2-1;
 		tripletList.push_back(index);
 	}
 
@@ -235,7 +255,7 @@ printf("cvx\n");//getchar();
 
 
 
-	engEvalString(eg,"minimize(norm(w,1)+sum(d));");
+	engEvalString(eg,"minimize(norm(w,1)+sum(d)*lambda);");
 	engEvalString(eg,"subject to");
 	engEvalString(eg,"A*[w;p;d]==zeros(numpoly+1,1);");
 	engEvalString(eg,"w(1)==1;");
@@ -308,17 +328,25 @@ bool learningHPBF::ifZero(const vector<int>& posi,const vector<bool>& y)
 
 	for ( vector<int>::const_iterator it = posi.begin() ; it != posi.end(); it++)
 	{
-		if(*it<0&&y[-*it]==1) 
+		if(*it<0&&y[(-*it)-1]==1) 
 		{
 			value = 0;
 			break;
 		}
-		else if(*it>0&&y[*it]==0)
+		else if(*it>0&&y[(*it)-1]==0)
 		{
 			value = 0;
 			break;
 		}
 	}
+
+vector<int> tindex = posi;
+for(int i=0;i<tindex.size();i++)
+{
+	printf("%d ",tindex[i]);
+}
+printf("\n");//getchar();
+printf("[%d]\n",value);
 
 	return value;
 }
