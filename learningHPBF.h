@@ -23,7 +23,8 @@ public:
 	
 	int lastVar();
 	int lastComp();
-	double optimize(vector<bool>& y);
+	double evaluate(const vector<bool>& y);
+	double evaluate2(const vector<bool>& y);
 	void setPara(const vector<double>& p);
 	void getPara(vector<double>& p);
 

@@ -167,9 +167,20 @@ double learningHPBF::learn(const vector<bool>& y,vector<double> &w, const double
 
 		poly<double> cols;
 		posi2poly(it->first, cols, 1);
-		
+//vector<int> tindex = it->first;
+//for(int i=0;i<tindex.size();i++)
+//{
+//	printf("%d ",tindex[i]);
+//}
+//printf("\n");//getchar();
 		for(poly<double>::TERMS::iterator it2=cols.firstTerm();it2!=cols.lastTerm();it2++)
 		{
+//vector<int> tindex = it2->first;
+//for(int i=0;i<tindex.size();i++)
+//{
+//	printf("%d ",tindex[i]);
+//}
+//printf("=%f\n",-it2->second);//getchar();
 			index[0] = _TermID.getTerm(it2->first);
 			index[2] = -it2->second;
 			tripletList.push_back(index);
@@ -179,10 +190,12 @@ double learningHPBF::learn(const vector<bool>& y,vector<double> &w, const double
 
 		if(ifZero(it->first,y)==1)
 		{
+//printf("in\n");
 			index[0] = _TermID.numTerm()+1;
 			index[2] = 1;
 			tripletList.push_back(index);
 		}
+//getchar();
 	}
 
 	for(int i=1;i<=_lastvar;i++)
@@ -192,7 +205,7 @@ double learningHPBF::learn(const vector<bool>& y,vector<double> &w, const double
 		index2[0]=i;
 		index[0] = _TermID.getTerm(index2);
 		index[1] = lastComp()+_PosiID.numTerm()+i;
-		index[2] = y[i-1]*2-1;
+		index[2] = 1-(int(y[i-1])*2);
 		tripletList.push_back(index);
 	}
 
@@ -255,7 +268,7 @@ printf("cvx\n");//getchar();
 
 
 
-	engEvalString(eg,"minimize(norm(w,1)+sum(d)*lambda);");
+	engEvalString(eg,"minimize(norm(w,1)+norm(d,1)*lambda);");
 	engEvalString(eg,"subject to");
 	engEvalString(eg,"A*[w;p;d]==zeros(numpoly+1,1);");
 	engEvalString(eg,"w(1)==1;");
@@ -324,30 +337,76 @@ void learningHPBF::posi2poly(vector<int> posi,poly<double>& index, double coeff)
 
 bool learningHPBF::ifZero(const vector<int>& posi,const vector<bool>& y)
 {
-	bool value=1;
+	bool value=true;
 
 	for ( vector<int>::const_iterator it = posi.begin() ; it != posi.end(); it++)
 	{
 		if(*it<0&&y[(-*it)-1]==1) 
 		{
-			value = 0;
+			value = false;
 			break;
 		}
 		else if(*it>0&&y[(*it)-1]==0)
 		{
-			value = 0;
+			value = false;
 			break;
 		}
 	}
 
-vector<int> tindex = posi;
-for(int i=0;i<tindex.size();i++)
-{
-	printf("%d ",tindex[i]);
-}
-printf("\n");//getchar();
-printf("[%d]\n",value);
+//vector<int> tindex = posi;
+//for(int i=0;i<tindex.size();i++)
+//{
+//	printf("%d ",tindex[i]);
+//}
+//printf("\n");//getchar();
+//printf("[%d]\n",value);
 
 	return value;
 }
 
+double learningHPBF::evaluate(const vector<bool>& y)
+{
+	poly<double> total;
+
+	for(component *k=_component;k!=NULL;k=k->next)
+	{
+		printf("%d %f\n",k->cid,_para[k->cid-1]);getchar();
+
+		if(k->cid==1) continue;
+		else total = total+((*(k->A_i))*_para[k->cid-1]);
+
+	}
+
+	printf("sum finished\n");
+
+	return total.evaluate(y);
+}
+
+double learningHPBF::evaluate2(const vector<bool>& y)
+{
+	double total=0;
+
+	for(component *k=_component;k!=NULL;k=k->next)
+	{
+		if(k->cid!=1) total += k->A_i->evaluate(y)*_para[k->cid-1];
+
+	}
+
+//	printf("sum finished\n");
+
+	return total;
+}
+
+/*
+cvx_begin
+variable d(numvar);
+variable w(numcom);
+variable p(numposi);
+minimize(norm(w,1)+sum(d)*lambda);
+subject to
+A*[w;p;d]==zeros(numpoly+1,1);
+w(1)==1;
+d>=zeros(numvar,1);
+p>=zeros(numposi,1);
+cvx_end
+*/
